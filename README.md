@@ -36,7 +36,7 @@
 
     ```bash
     # Clone the repository
-    git clone https://github.com/yourusername/subsplit.git
+    git clone https://github.com/HamiltonG98/SubSplit.git
 
     # Navigate to the project directory
     cd subsplit

@@ -12,12 +12,14 @@ import 'package:subscription_management/features/subscriptions/domain/entities/s
     as domain;
 import 'package:subscription_management/features/subscriptions/domain/entities/subscription_detail.dart';
 import 'package:subscription_management/features/subscriptions/domain/repositories/subscription_repository.dart';
+import 'package:subscription_management/core/services/notification_service.dart';
 
 /// Concrete repository implementation backed by Drift.
 class SubscriptionRepositoryImpl implements SubscriptionRepository {
   final AppDatabase _db;
+  final NotificationService _notificationService;
 
-  SubscriptionRepositoryImpl(this._db);
+  SubscriptionRepositoryImpl(this._db, this._notificationService);
 
   // ── Mappers ──
 
@@ -153,6 +155,13 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
       // Create the first period
       await _createNewPeriod(subId, subscription.billingDay);
 
+      // Schedule notification (errors are logged, not propagated)
+      await _scheduleNotification(
+        id: subId,
+        name: subscription.name,
+        billingDay: subscription.billingDay,
+      );
+
       return Right(subId);
     } catch (e) {
       return Left(DatabaseFailure('Failed to add subscription: $e'));
@@ -170,9 +179,29 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
       await _db.removePeriodsForSubscription(subscriptionId);
       await _db.removeMembersForSubscription(subscriptionId);
       await _db.removeSubscription(subscriptionId);
+      await _notificationService.cancelReminder(subscriptionId);
       return const Right(null);
     } catch (e) {
       return Left(DatabaseFailure('Failed to delete subscription: $e'));
+    }
+  }
+
+  Future<void> _scheduleNotification({
+    required int id,
+    required String name,
+    required int billingDay,
+  }) async {
+    try {
+      await _notificationService.scheduleMonthlyReminder(
+        id: id,
+        title: 'Payment Due',
+        body: 'Your $name subscription period starts today.',
+        dayOfMonth: billingDay,
+        hour: 9,
+        minute: 0,
+      );
+    } catch (_) {
+      // Notification scheduling is non-critical; silently ignore errors
     }
   }
 
@@ -190,6 +219,13 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
           billingDay: Value(subscription.billingDay),
           createdAt: Value(subscription.createdAt),
         ),
+      );
+
+      // Update notification schedule (errors are logged, not propagated)
+      await _scheduleNotification(
+        id: subscription.id!,
+        name: subscription.name,
+        billingDay: subscription.billingDay,
       );
       return const Right(null);
     } catch (e) {
