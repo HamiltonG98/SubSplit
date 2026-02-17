@@ -1,0 +1,39 @@
+name: subscription_management
+description: 'Manage shared streaming platform subscriptions'
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  # Database
+  drift: ^2.22.1
+  sqlite3_flutter_libs: ^0.5.28
+  path_provider: ^2.1.5
+  path: ^1.9.1
+  # State Management
+  flutter_riverpod: ^2.6.1
+  # Dependency Injection
+  get_it: ^8.0.3
+  # Error Handling
+  dartz: ^0.10.1
+  # Utilities
+  intl: ^0.20.2
+  flutter_slidable: ^3.1.2
+  google_fonts: ^6.2.1
+  uuid: ^4.5.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  # Code Generation
+  drift_dev: ^2.22.1
+  build_runner: ^2.4.14
+
+flutter:
+  uses-material-design: true
