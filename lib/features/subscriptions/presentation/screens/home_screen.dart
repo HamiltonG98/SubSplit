@@ -7,11 +7,30 @@ import 'package:subscription_management/features/subscriptions/presentation/scre
 import 'package:subscription_management/features/subscriptions/presentation/screens/subscription_detail_screen.dart';
 import 'package:subscription_management/features/subscriptions/presentation/widgets/subscription_card.dart';
 
-class HomeScreen extends ConsumerWidget {
+import 'package:subscription_management/core/di/injection_container.dart' as di;
+import 'package:subscription_management/core/services/notification_service.dart';
+
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Initialize and request permissions after the UI is built
+    // to avoid hanging the splash screen on Android
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await di.sl<NotificationService>().init();
+      await di.sl<NotificationService>().requestPermissions();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final subscriptionsAsync = ref.watch(subscriptionListProvider);
 
     return Scaffold(
@@ -112,7 +131,6 @@ class HomeScreen extends ConsumerWidget {
                           SlidableAction(
                             onPressed: (_) => _confirmDelete(
                               context,
-                              ref,
                               summary.subscription.id!,
                             ),
                             backgroundColor: AppTheme.error,
@@ -158,7 +176,7 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  void _confirmDelete(BuildContext context, WidgetRef ref, int id) {
+  void _confirmDelete(BuildContext context, int id) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
