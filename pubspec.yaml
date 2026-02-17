@@ -37,6 +37,13 @@ dev_dependencies:
   # Code Generation
   drift_dev: ^2.22.1
   build_runner: ^2.4.14
+  flutter_launcher_icons: ^0.13.1
+
+flutter_launcher_icons:
+  android: 'launcher_icon'
+  ios: true
+  image_path: 'assets/icon/app_icon.png'
+  min_sdk_android: 21 # android min sdk min:16, default:21
 
 flutter:
   uses-material-design: true
