@@ -1,4 +1,5 @@
 import 'package:dartz/dartz.dart';
+import 'package:flutter/foundation.dart';
 import 'package:drift/drift.dart';
 import 'package:subscription_management/core/error/failures.dart';
 import 'package:subscription_management/features/subscriptions/data/datasources/app_database.dart';
@@ -191,17 +192,25 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
     required String name,
     required int billingDay,
   }) async {
-    try {
-      await _notificationService.scheduleMonthlyReminder(
-        id: id,
-        title: 'Payment Due',
-        body: 'Your $name subscription period starts today.',
-        dayOfMonth: billingDay,
-        hour: 9,
-        minute: 0,
+    final result = await _notificationService.scheduleMonthlyReminder(
+      id: id,
+      title: 'Payment Due',
+      body: 'Your $name subscription period starts today.',
+      dayOfMonth: billingDay,
+      hour: 9,
+      minute: 0,
+    );
+
+    if (result == ScheduleResult.permissionDenied) {
+      debugPrint(
+        'Notification schedule skipped: missing notification permission',
       );
-    } catch (_) {
-      // Notification scheduling is non-critical; silently ignore errors
+    } else if (result == ScheduleResult.initFailed) {
+      debugPrint(
+        'Notification schedule failed: notification service not ready',
+      );
+    } else if (result == ScheduleResult.scheduledInexact) {
+      debugPrint('Notification scheduled as inexact: exact alarm unavailable');
     }
   }
 
@@ -210,6 +219,8 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
     domain.Subscription subscription,
   ) async {
     try {
+      final previous = await _db.getSubscriptionById(subscription.id!);
+
       await _db.updateSubscription(
         SubscriptionsCompanion(
           id: Value(subscription.id!),
@@ -217,9 +228,20 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
           color: Value(subscription.color),
           totalCost: Value(subscription.totalCost),
           billingDay: Value(subscription.billingDay),
+          currency: Value(subscription.currency),
           createdAt: Value(subscription.createdAt),
         ),
       );
+
+      if (previous.billingDay != subscription.billingDay) {
+        final openPeriod = await _db.getOpenPeriod(subscription.id!);
+        if (openPeriod != null) {
+          final (startDate, endDate) = _currentPeriodRange(
+            subscription.billingDay,
+          );
+          await _db.updatePeriodDates(openPeriod.id, startDate, endDate);
+        }
+      }
 
       // Update notification schedule (errors are logged, not propagated)
       await _scheduleNotification(
@@ -298,6 +320,28 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
     if (memberList.isEmpty) return;
     final amountPerMember = sub.totalCost / memberList.length;
     await _db.updateAmountForAllMembers(subscriptionId, amountPerMember);
+  }
+
+  (DateTime, DateTime) _currentPeriodRange(int billingDay) {
+    final now = DateTime.now();
+    final day = billingDay.clamp(1, 28);
+
+    DateTime startDate;
+    if (now.day >= day) {
+      startDate = DateTime(now.year, now.month, day);
+    } else {
+      startDate = now.month == 1
+          ? DateTime(now.year - 1, 12, day)
+          : DateTime(now.year, now.month - 1, day);
+    }
+
+    final endDate = DateTime(
+      startDate.month == 12 ? startDate.year + 1 : startDate.year,
+      startDate.month == 12 ? 1 : startDate.month + 1,
+      day,
+    ).subtract(const Duration(days: 1));
+
+    return (startDate, endDate);
   }
 
   @override

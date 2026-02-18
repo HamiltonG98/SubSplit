@@ -145,6 +145,18 @@ class AppDatabase extends _$AppDatabase {
         const PeriodsCompanion(status: Value('closed')),
       );
 
+  Future<void> updatePeriodDates(
+    int periodId,
+    DateTime startDate,
+    DateTime endDate,
+  ) =>
+      (update(periods)..where((p) => p.id.equals(periodId))).write(
+        PeriodsCompanion(
+          startDate: Value(startDate),
+          endDate: Value(endDate),
+        ),
+      );
+
   Future<int> removePeriodsForSubscription(int subscriptionId) => (delete(
     periods,
   )..where((p) => p.subscriptionId.equals(subscriptionId))).go();

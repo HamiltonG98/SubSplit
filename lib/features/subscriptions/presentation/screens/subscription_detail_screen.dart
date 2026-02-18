@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:subscription_management/core/theme/app_theme.dart';
 import 'package:subscription_management/core/widgets/app_toast.dart';
+import 'package:subscription_management/features/subscriptions/domain/entities/subscription.dart'
+    as domain;
 import 'package:subscription_management/features/subscriptions/domain/entities/subscription_detail.dart';
 import 'package:subscription_management/features/subscriptions/presentation/providers/subscription_providers.dart';
 import 'package:subscription_management/features/subscriptions/presentation/screens/history_screen.dart';
@@ -23,6 +25,16 @@ class SubscriptionDetailScreen extends ConsumerWidget {
             detailAsync.whenData((d) => Text(d.subscription.name)).value ??
             const Text('Loading...'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_rounded),
+            tooltip: 'Edit Subscription',
+            onPressed: () {
+              final detail = detailAsync.value;
+              if (detail != null) {
+                _showEditSubscriptionDialog(context, ref, detail);
+              }
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.history_rounded),
             tooltip: 'Payment History',
@@ -146,10 +158,12 @@ class SubscriptionDetailScreen extends ConsumerWidget {
                         color: accentColor,
                       ),
                       const SizedBox(width: 8),
-                      Text(
-                        'Current period: ${dateFormat.format(detail.currentPeriod!.startDate)} – ${dateFormat.format(detail.currentPeriod!.endDate)}',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.textPrimary,
+                      Flexible(
+                        child: Text(
+                          'Current period: ${dateFormat.format(detail.currentPeriod!.startDate)} – ${dateFormat.format(detail.currentPeriod!.endDate)}',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: AppTheme.textPrimary),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -304,6 +318,215 @@ class SubscriptionDetailScreen extends ConsumerWidget {
     );
   }
 
+  Future<void> _showEditSubscriptionDialog(
+    BuildContext context,
+    WidgetRef ref,
+    SubscriptionDetail detail,
+  ) async {
+    final sub = detail.subscription;
+    final formKey = GlobalKey<FormState>();
+    final nameController = TextEditingController(text: sub.name);
+    final costController = TextEditingController(
+      text: sub.totalCost.toStringAsFixed(2),
+    );
+    final billingDayController = TextEditingController(
+      text: sub.billingDay.toString(),
+    );
+    var selectedCurrency = sub.currency;
+    var selectedColor = AppTheme.colorFromHex(sub.color);
+    var isSaving = false;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('Edit Subscription'),
+          content: SingleChildScrollView(
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Subscription Name',
+                    ),
+                    validator: (v) =>
+                        v == null || v.trim().isEmpty ? 'Required' : null,
+                    textCapitalization: TextCapitalization.words,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: costController,
+                          decoration: const InputDecoration(
+                            labelText: 'Total Cost',
+                            prefixText: '\$ ',
+                          ),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          validator: (v) {
+                            if (v == null || v.isEmpty) return 'Required';
+                            if (double.tryParse(v) == null) return 'Invalid';
+                            return null;
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          controller: billingDayController,
+                          decoration: const InputDecoration(
+                            labelText: 'Billing Day',
+                          ),
+                          keyboardType: TextInputType.number,
+                          validator: (v) {
+                            if (v == null || v.isEmpty) return 'Required';
+                            final day = int.tryParse(v);
+                            if (day == null || day < 1 || day > 28) {
+                              return '1-28';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Text('USD (\$)'),
+                          selected: selectedCurrency == 'USD',
+                          onSelected: (_) => setState(() {
+                            selectedCurrency = 'USD';
+                          }),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Text('NIO (C\$)'),
+                          selected: selectedCurrency == 'NIO',
+                          onSelected: (_) => setState(() {
+                            selectedCurrency = 'NIO';
+                          }),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: AppTheme.subscriptionColors.map((color) {
+                      final isSelected = selectedColor == color;
+                      return GestureDetector(
+                        onTap: () => setState(() {
+                          selectedColor = color;
+                        }),
+                        child: Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: color,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isSelected
+                                  ? Colors.white
+                                  : Colors.transparent,
+                              width: 2,
+                            ),
+                          ),
+                          child: isSelected
+                              ? const Icon(
+                                  Icons.check_rounded,
+                                  color: Colors.white,
+                                  size: 16,
+                                )
+                              : null,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSaving ? null : () => Navigator.pop(ctx),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
+            ),
+            TextButton(
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+                      setState(() {
+                        isSaving = true;
+                      });
+
+                      final updatedSubscription = domain.Subscription(
+                        id: sub.id,
+                        name: nameController.text.trim(),
+                        color: AppTheme.colorToHex(selectedColor),
+                        totalCost: double.parse(costController.text),
+                        billingDay: int.parse(billingDayController.text),
+                        currency: selectedCurrency,
+                        createdAt: sub.createdAt,
+                      );
+
+                      final errorMessage = await ref
+                          .read(
+                            subscriptionDetailProvider(subscriptionId).notifier,
+                          )
+                          .updateSubscription(updatedSubscription);
+                      if (errorMessage != null) {
+                        if (ctx.mounted) {
+                          setState(() {
+                            isSaving = false;
+                          });
+                        }
+                        if (context.mounted) {
+                          AppToast.show(
+                            context,
+                            message: errorMessage,
+                            type: ToastType.error,
+                          );
+                        }
+                        return;
+                      }
+
+                      await ref.read(subscriptionListProvider.notifier).load();
+
+                      if (!ctx.mounted) return;
+                      Navigator.pop(ctx);
+                      if (context.mounted) {
+                        AppToast.show(
+                          context,
+                          message: 'Subscription updated',
+                          type: ToastType.success,
+                        );
+                      }
+                    },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+  }
+
   void _showEditMemberDialog(
     BuildContext context,
     WidgetRef ref,
@@ -421,9 +644,19 @@ class SubscriptionDetailScreen extends ConsumerWidget {
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              await ref
+              final errorMessage = await ref
                   .read(subscriptionDetailProvider(subscriptionId).notifier)
                   .closePeriod();
+              if (errorMessage != null) {
+                if (context.mounted) {
+                  AppToast.show(
+                    context,
+                    message: errorMessage,
+                    type: ToastType.error,
+                  );
+                }
+                return;
+              }
               if (context.mounted) {
                 AppToast.show(
                   context,

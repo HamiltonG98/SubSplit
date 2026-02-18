@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:subscription_management/core/di/injection_container.dart';
 import 'package:subscription_management/features/subscriptions/domain/entities/member.dart'
     as domain;
+import 'package:subscription_management/features/subscriptions/domain/entities/subscription.dart'
+    as domain;
 import 'package:subscription_management/features/subscriptions/domain/entities/subscription_detail.dart';
 import 'package:subscription_management/features/subscriptions/domain/repositories/subscription_repository.dart';
 
@@ -69,9 +71,19 @@ class SubscriptionDetailNotifier
     await load();
   }
 
-  Future<void> closePeriod() async {
-    await _repo.closePeriod(subscriptionId);
+  Future<String?> closePeriod() async {
+    final result = await _repo.closePeriod(subscriptionId);
+    final failureMessage = result.fold<String?>((failure) => failure.message, (
+      _,
+    ) {
+      return null;
+    });
+    if (failureMessage != null) {
+      return failureMessage;
+    }
+
     await load();
+    return null;
   }
 
   Future<void> addMember(String name) async {
@@ -97,6 +109,21 @@ class SubscriptionDetailNotifier
 
   Future<void> deleteSubscription() async {
     await _repo.deleteSubscription(subscriptionId);
+  }
+
+  Future<String?> updateSubscription(domain.Subscription subscription) async {
+    final result = await _repo.updateSubscription(subscription);
+    final failureMessage = result.fold<String?>((failure) => failure.message, (
+      _,
+    ) {
+      return null;
+    });
+    if (failureMessage != null) {
+      return failureMessage;
+    }
+
+    await load();
+    return null;
   }
 }
 
