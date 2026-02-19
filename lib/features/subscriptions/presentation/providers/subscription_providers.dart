@@ -66,9 +66,16 @@ class SubscriptionDetailNotifier
     );
   }
 
-  Future<void> togglePayment(int paymentId, bool isPaid) async {
-    await _repo.togglePayment(paymentId, isPaid);
+  Future<String?> togglePayment(int paymentId, bool isPaid) async {
+    final result = await _repo.togglePayment(paymentId, isPaid);
+    final failureMessage = result.fold<String?>(
+      (failure) => failure.message,
+      (_) => null,
+    );
+    if (failureMessage != null) return failureMessage;
+
     await load();
+    return null;
   }
 
   Future<String?> closePeriod() async {
@@ -86,29 +93,51 @@ class SubscriptionDetailNotifier
     return null;
   }
 
-  Future<void> addMember(String name) async {
+  Future<String?> addMember(String name) async {
     final member = domain.Member(
       subscriptionId: subscriptionId,
       name: name,
       amount: 0, // auto-calculated by repository
       createdAt: DateTime.now(),
     );
-    await _repo.addMember(member);
+    final result = await _repo.addMember(member);
+    final failureMessage = result.fold<String?>(
+      (failure) => failure.message,
+      (_) => null,
+    );
+    if (failureMessage != null) return failureMessage;
+
     await load();
+    return null;
   }
 
-  Future<void> updateMember(int memberId, String name) async {
-    await _repo.updateMember(memberId, name);
+  Future<String?> updateMember(int memberId, String name) async {
+    final result = await _repo.updateMember(memberId, name);
+    final failureMessage = result.fold<String?>(
+      (failure) => failure.message,
+      (_) => null,
+    );
+    if (failureMessage != null) return failureMessage;
+
     await load();
+    return null;
   }
 
-  Future<void> deleteMember(int memberId) async {
-    await _repo.deleteMember(memberId);
+  Future<String?> deleteMember(int memberId) async {
+    final result = await _repo.deleteMember(memberId);
+    final failureMessage = result.fold<String?>(
+      (failure) => failure.message,
+      (_) => null,
+    );
+    if (failureMessage != null) return failureMessage;
+
     await load();
+    return null;
   }
 
-  Future<void> deleteSubscription() async {
-    await _repo.deleteSubscription(subscriptionId);
+  Future<String?> deleteSubscription() async {
+    final result = await _repo.deleteSubscription(subscriptionId);
+    return result.fold<String?>((failure) => failure.message, (_) => null);
   }
 
   Future<String?> updateSubscription(domain.Subscription subscription) async {

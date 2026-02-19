@@ -243,6 +243,11 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
         }
       }
 
+      // Recalculate member amounts when the total cost changes
+      if (previous.totalCost != subscription.totalCost) {
+        await _recalculateMemberAmounts(subscription.id!);
+      }
+
       // Update notification schedule (errors are logged, not propagated)
       await _scheduleNotification(
         id: subscription.id!,

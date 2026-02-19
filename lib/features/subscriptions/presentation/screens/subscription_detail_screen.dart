@@ -224,7 +224,16 @@ class SubscriptionDetailScreen extends ConsumerWidget {
                 if (payment != null) {
                   ref
                       .read(subscriptionDetailProvider(subscriptionId).notifier)
-                      .togglePayment(payment.id!, isPaid);
+                      .togglePayment(payment.id!, isPaid)
+                      .then((error) {
+                        if (error != null && context.mounted) {
+                          AppToast.show(
+                            context,
+                            message: error,
+                            type: ToastType.error,
+                          );
+                        }
+                      });
                 }
               },
               onEdit: () {
@@ -279,7 +288,7 @@ class SubscriptionDetailScreen extends ConsumerWidget {
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Add Member'),
         content: Form(
           key: formKey,
@@ -296,19 +305,22 @@ class SubscriptionDetailScreen extends ConsumerWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text(
               'Cancel',
               style: TextStyle(color: AppTheme.textSecondary),
             ),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               if (formKey.currentState!.validate()) {
-                Navigator.pop(ctx);
-                ref
+                Navigator.pop(dialogContext);
+                final error = await ref
                     .read(subscriptionDetailProvider(subscriptionId).notifier)
                     .addMember(nameController.text.trim());
+                if (error != null && context.mounted) {
+                  AppToast.show(context, message: error, type: ToastType.error);
+                }
               }
             },
             child: const Text('Add'),
@@ -338,8 +350,8 @@ class SubscriptionDetailScreen extends ConsumerWidget {
 
     await showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setState) => AlertDialog(
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setState) => AlertDialog(
           title: const Text('Edit Subscription'),
           content: SingleChildScrollView(
             child: Form(
@@ -460,7 +472,7 @@ class SubscriptionDetailScreen extends ConsumerWidget {
           ),
           actions: [
             TextButton(
-              onPressed: isSaving ? null : () => Navigator.pop(ctx),
+              onPressed: isSaving ? null : () => Navigator.pop(dialogContext),
               child: const Text(
                 'Cancel',
                 style: TextStyle(color: AppTheme.textSecondary),
@@ -491,7 +503,7 @@ class SubscriptionDetailScreen extends ConsumerWidget {
                           )
                           .updateSubscription(updatedSubscription);
                       if (errorMessage != null) {
-                        if (ctx.mounted) {
+                        if (dialogContext.mounted) {
                           setState(() {
                             isSaving = false;
                           });
@@ -508,8 +520,9 @@ class SubscriptionDetailScreen extends ConsumerWidget {
 
                       await ref.read(subscriptionListProvider.notifier).load();
 
-                      if (!ctx.mounted) return;
-                      Navigator.pop(ctx);
+                      if (!dialogContext.mounted) return;
+                      Navigator.pop(dialogContext);
+
                       if (context.mounted) {
                         AppToast.show(
                           context,
@@ -524,7 +537,6 @@ class SubscriptionDetailScreen extends ConsumerWidget {
         ),
       ),
     );
-
   }
 
   void _showEditMemberDialog(
@@ -537,7 +549,7 @@ class SubscriptionDetailScreen extends ConsumerWidget {
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Edit Member'),
         content: Form(
           key: formKey,
@@ -551,19 +563,22 @@ class SubscriptionDetailScreen extends ConsumerWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text(
               'Cancel',
               style: TextStyle(color: AppTheme.textSecondary),
             ),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               if (formKey.currentState!.validate()) {
-                Navigator.pop(ctx);
-                ref
+                Navigator.pop(dialogContext);
+                final error = await ref
                     .read(subscriptionDetailProvider(subscriptionId).notifier)
                     .updateMember(member.id!, nameController.text.trim());
+                if (error != null && context.mounted) {
+                  AppToast.show(context, message: error, type: ToastType.error);
+                }
               }
             },
             child: const Text('Save'),
@@ -581,23 +596,26 @@ class SubscriptionDetailScreen extends ConsumerWidget {
   ) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Remove Member'),
         content: Text('Remove $name from this subscription?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text(
               'Cancel',
               style: TextStyle(color: AppTheme.textSecondary),
             ),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              ref
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              final error = await ref
                   .read(subscriptionDetailProvider(subscriptionId).notifier)
                   .deleteMember(memberId);
+              if (error != null && context.mounted) {
+                AppToast.show(context, message: error, type: ToastType.error);
+              }
             },
             child: const Text(
               'Remove',
@@ -628,14 +646,14 @@ class SubscriptionDetailScreen extends ConsumerWidget {
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Close Period'),
         content: const Text(
           'All members have paid! This will close the current billing period and start a new one. All payment statuses will reset. Continue?',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text(
               'Cancel',
               style: TextStyle(color: AppTheme.textSecondary),
@@ -643,7 +661,7 @@ class SubscriptionDetailScreen extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(ctx);
+              Navigator.pop(dialogContext);
               final errorMessage = await ref
                   .read(subscriptionDetailProvider(subscriptionId).notifier)
                   .closePeriod();
@@ -678,14 +696,14 @@ class SubscriptionDetailScreen extends ConsumerWidget {
   void _confirmDeleteSubscription(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Subscription'),
         content: const Text(
           'This will permanently delete this subscription, all its members, and the entire payment history. This cannot be undone.',
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text(
               'Cancel',
               style: TextStyle(color: AppTheme.textSecondary),
@@ -693,13 +711,19 @@ class SubscriptionDetailScreen extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(ctx);
-              await ref
+              Navigator.pop(dialogContext);
+              final error = await ref
                   .read(subscriptionDetailProvider(subscriptionId).notifier)
                   .deleteSubscription();
+              if (error != null) {
+                if (context.mounted) {
+                  AppToast.show(context, message: error, type: ToastType.error);
+                }
+                return;
+              }
               // Refresh home list and pop back
               ref.read(subscriptionListProvider.notifier).load();
-              if (ctx.mounted) {
+              if (context.mounted) {
                 Navigator.of(context).pop();
               }
             },
